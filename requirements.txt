@@ -1,0 +1,7 @@
+# For yolo26m.py (local run; google.colab is Colab-only)
+ultralytics>=8.0
+torch>=2.0
+torchvision
+opencv-python
+ipython
+Pillow

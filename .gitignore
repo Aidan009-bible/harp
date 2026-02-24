@@ -1,0 +1,40 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+venv/
+.env
+
+# ── Node ──
+node_modules/
+frontend/dist/
+frontend/.env.local
+
+# ── ML Models & Large Files ──
+*.pt
+*.keras
+*.h5
+*.pb
+*.onnx
+*.task
+hand_landmarker.task
+
+# ── Media / Output ──
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+backend/uploads/
+backend/outputs/
+output/
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── IDE ──
+.vscode/
+.idea/

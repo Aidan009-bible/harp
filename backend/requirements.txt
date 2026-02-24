@@ -1,0 +1,11 @@
+fastapi>=0.100.0
+uvicorn[standard]>=0.22.0
+python-multipart>=0.0.6
+tensorflow>=2.12
+librosa>=0.10
+soundfile>=0.12
+pandas>=1.5
+numpy>=1.23
+ultralytics>=8.0
+mediapipe>=0.10.30
+opencv-python>=4.5
