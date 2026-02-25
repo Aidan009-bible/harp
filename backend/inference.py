@@ -4,6 +4,7 @@
 import os
 import shutil
 import subprocess
+import json
 from pathlib import Path
 import numpy as np
 
@@ -119,12 +120,13 @@ def srt_time(t):
     return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
 
 
-def run_pipeline(model_path: str, video_path: str, output_dir: str, use_yin_fallback: bool = True):
+def run_pipeline(model_path: str, video_path: str, output_dir: str, use_yin_fallback: bool = True, fast_mode: bool = False):
     """
     Run harp string detection on a video.
     use_yin_fallback=False: default (model only, fixed threshold 0.25).
     use_yin_fallback=True: hybrid (per-string thresholds + YIN fallback).
-    Returns (csv_path, labeled_video_path, dataframe).
+    fast_mode=True: Skip video generation and return JSON only.
+    Returns (csv_path, labeled_video_path, df) if not fast_mode, else (csv_path, json_path, df).
     """
     os.makedirs(output_dir, exist_ok=True)
     wav_path = os.path.join(output_dir, "audio_16k.wav")
@@ -151,12 +153,38 @@ def run_pipeline(model_path: str, video_path: str, output_dir: str, use_yin_fall
     thr = THR_ARRAY if use_yin_fallback else np.full(NUM_STRINGS, THR_DEFAULT, dtype=np.float32)
 
     rows = []
+    
+    # 1. First Pass: Collect all features
+    mel_batch = []
+    vec_batch = []
+    valid_onsets = []
+    fallback_segments = []
+
     for t in onsets:
         start = int((t + OFFSET_SEC) * sr)
         start = max(0, start)
         clip = y[start : start + CLIP_SAMPLES]
         mel, vec = clip_to_mel_and_vec(clip, sr)
-        probs = model.predict([mel[None, ...], vec[None, ...]], verbose=0)[0]
+        mel_batch.append(mel)
+        vec_batch.append(vec)
+        valid_onsets.append(t)
+        
+        if use_yin_fallback:
+            seg_end = int((t + YIN_WIN_SEC) * sr)
+            seg = y[int(t * sr) : seg_end]
+            fallback_segments.append(seg)
+
+    # 2. Batch Prediction
+    if len(valid_onsets) > 0:
+        mel_batch = np.array(mel_batch)
+        vec_batch = np.array(vec_batch)
+        all_probs = model.predict([mel_batch, vec_batch], verbose=0)
+    else:
+        all_probs = []
+
+    # 3. Process Predictions
+    for i, t in enumerate(valid_onsets):
+        probs = all_probs[i]
         top1 = int(np.argmax(probs)) + 1
         top1_prob = float(np.max(probs))
         pred = (probs >= thr).astype(int)
@@ -164,8 +192,7 @@ def run_pipeline(model_path: str, video_path: str, output_dir: str, use_yin_fall
         used = "model"
 
         if use_yin_fallback and ((top1_prob < MODEL_CONF_MIN) or (len(active) == 0)):
-            seg_end = int((t + YIN_WIN_SEC) * sr)
-            seg = y[int(t * sr) : seg_end]
+            seg = fallback_segments[i]
             s_yin, pitch = yin_string_from_segment(seg, sr)
             if s_yin is not None:
                 active = np.array([s_yin], dtype=int)
@@ -189,6 +216,27 @@ def run_pipeline(model_path: str, video_path: str, output_dir: str, use_yin_fall
     csv_name = "predictions_hybrid.csv" if use_yin_fallback else "predictions_default.csv"
     csv_path = os.path.join(output_dir, csv_name)
     df.to_csv(csv_path, index=False)
+
+    # Fast Mode: Output JSON instead of generating a video
+    if fast_mode:
+        json_results = []
+        for row in rows:
+            active_strs = [int(s) for s in str(row["predicted_strings"]).split(",")] if row["predicted_strings"] else []
+            for string_num in active_strs:
+                json_results.append({
+                    "t": float(row["time_sec"]),
+                    "string": string_num,
+                    "detections": [{
+                        "cls": "audio_onset",
+                        "conf": float(row[f"prob_S{string_num}"])
+                    }]
+                })
+        
+        json_path = os.path.join(output_dir, "audio_detections.json")
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(json_results, f, separators=(",", ":"))
+        
+        return csv_path, json_path, df
 
     srt_path = os.path.join(output_dir, "overlay.srt")
     with open(srt_path, "w", encoding="utf-8") as f:

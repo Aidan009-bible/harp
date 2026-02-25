@@ -66,14 +66,14 @@ jobs = {}
 
 def run_job_audio(job_id: str, model_path: str, video_path: str, use_yin_fallback: bool):
     try:
-        jobs[job_id] = {"status": "running", "message": "Processing (audio)..."}
-        csv_path, video_out_path, df = run_pipeline(
-            model_path, video_path, str(OUTPUT_DIR / job_id), use_yin_fallback=use_yin_fallback
+        jobs[job_id] = {"status": "running", "message": "Processing (audio fast mode)..."}
+        csv_path, json_path, df = run_pipeline(
+            model_path, video_path, str(OUTPUT_DIR / job_id), use_yin_fallback=use_yin_fallback, fast_mode=True
         )
         jobs[job_id] = {
             "status": "done",
             "csv_path": csv_path,
-            "video_path": video_out_path,
+            "json_path": json_path,
             "rows": len(df),
         }
     except Exception as e:
@@ -85,13 +85,14 @@ def run_job_hand(job_id: str, video_path: str, weights_path: str | None):
         jobs[job_id] = {"status": "error", "message": "Hand detector not available (harp_hand_detector not found)."}
         return
     try:
-        jobs[job_id] = {"status": "running", "message": "Processing (hand detection)..."}
+        jobs[job_id] = {"status": "running", "message": "Processing (hand fast mode)..."}
         out_dir = str(OUTPUT_DIR / job_id)
-        csv_path, video_out_path = run_hand_detector(
+        csv_path, _, json_path = run_hand_detector(
             video_path,
             output_dir=out_dir,
             preview=False,
             weights_path=weights_path,
+            fast_mode=True
         )
         rows = 0
         if os.path.isfile(csv_path):
@@ -100,7 +101,7 @@ def run_job_hand(job_id: str, video_path: str, weights_path: str | None):
         jobs[job_id] = {
             "status": "done",
             "csv_path": csv_path,
-            "video_path": video_out_path,
+            "json_path": json_path,
             "rows": rows,
         }
     except Exception as e:
@@ -117,76 +118,98 @@ def run_job_both(
 ):
     out_dir = str(OUTPUT_DIR / job_id)
     try:
-        jobs[job_id] = {"status": "running", "message": "Processing (audio)..."}
-        csv_audio, video_audio, df = run_pipeline(
-            model_path, video_path, out_dir, use_yin_fallback=use_yin_fallback
+        jobs[job_id] = {"status": "running", "message": "Processing (audio fast mode)..."}
+        csv_audio, json_audio, df = run_pipeline(
+            model_path, video_path, out_dir, use_yin_fallback=use_yin_fallback, fast_mode=True
         )
-        audio_result = {"csv_path": csv_audio, "video_path": video_audio, "rows": len(df)}
+        audio_result = {"csv_path": csv_audio, "json_path": json_audio, "rows": len(df)}
 
         if run_hand_detector is None:
             jobs[job_id] = {
                 "status": "done",
                 "audio": audio_result,
                 "hand": None,
-                "hand_error": "Hand detector not available (install ultralytics, mediapipe, opencv-python and put best.pt in backend/weights/).",
+                "hand_error": "Hand detector not available.",
             }
             return
-        jobs[job_id] = {"status": "running", "message": "Processing (hand)..."}
+            
+        jobs[job_id] = {"status": "running", "message": "Processing (hand fast mode)..."}
         try:
-            csv_hand, video_hand = run_hand_detector(
-                video_path, output_dir=out_dir, preview=False, weights_path=weights_path
+            # Extract audio onsets filtering out rows with no predictions
+            audio_onsets = df[df["predicted_strings"] != ""]["time_sec"].tolist()
+            
+            csv_hand, _, json_hand = run_hand_detector(
+                video_path, output_dir=out_dir, preview=False, weights_path=weights_path, fast_mode=True, audio_onsets=audio_onsets
             )
             hand_rows = 0
             if os.path.isfile(csv_hand):
                 with open(csv_hand, "r", encoding="utf-8") as f:
                     hand_rows = max(0, sum(1 for _ in f) - 1)
-            hand_result = {"csv_path": csv_hand, "video_path": video_hand, "rows": hand_rows}
+            hand_result = {"csv_path": csv_hand, "json_path": json_hand, "rows": hand_rows}
             
-            # Create combined video: hand annotations + audio subtitles
-            jobs[job_id] = {"status": "running", "message": "Combining results..."}
-            srt_path = os.path.join(out_dir, "overlay.srt")
-            combined_video = os.path.join(out_dir, "video_combined.mp4")
-            combined_result = None
+            # Combine JSON files instead of videos
+            jobs[job_id] = {"status": "running", "message": "Aligning Visuals to Audio Onsets..."}
+            
+            combined_json_path = os.path.join(out_dir, "combined_detections.json")
             combined_error = None
             
-            if not os.path.isfile(srt_path):
-                combined_error = f"SRT file not found: {srt_path}"
-            elif not os.path.isfile(video_hand):
-                combined_error = f"Hand video not found: {video_hand}"
-            else:
-                # Burn SRT subtitles onto hand-detected video, use original video for audio
-                from inference import FFMPEG_CMD
-                srt_abs = os.path.abspath(srt_path).replace("\\", "/")
-                if os.name == "nt":
-                    srt_abs = srt_abs.replace(":", "\\:", 1)
-                try:
-                    # Use hand video for video stream, original video for audio stream, burn SRT
-                    result = subprocess.run([
-                        FFMPEG_CMD, "-y",
-                        "-i", video_hand,  # Video with hand annotations
-                        "-i", original_video_path,  # Original video for audio
-                        "-vf", f"subtitles='{srt_abs}':force_style='Fontsize=36,BorderStyle=1,Outline=2,Shadow=1,MarginV=50'",
-                        "-c:v", "libx264",
-                        "-c:a", "aac",
-                        "-map", "0:v:0",  # Video from first input (hand video)
-                        "-map", "1:a:0",  # Audio from second input (original video)
-                        "-shortest",  # End when shortest stream ends
-                        combined_video
-                    ], check=True, capture_output=True, text=True)
-                    if os.path.isfile(combined_video):
-                        combined_result = {"video_path": combined_video}
+            try:
+                import json
+                combined_events = []
+                
+                audio_data = []
+                hand_data = []
+                
+                if os.path.exists(json_audio):
+                    with open(json_audio, 'r') as f:
+                        audio_data = json.load(f)
+                if os.path.exists(json_hand):
+                    with open(json_hand, 'r') as f:
+                        hand_data = json.load(f)
+                        
+                # Match visual events to audio events where times are close
+                for a_event in audio_data:
+                    t_audio = a_event.get('t', 0)
+                    str_audio = a_event.get('string')
+                    
+                    # Find closest hand event within 0.15s window
+                    matched_hand = None
+                    min_dt = 1000.0
+                    
+                    for h_event in hand_data:
+                        t_hand = h_event.get('t', 0)
+                        str_hand = h_event.get('string')
+                        
+                        dt = abs(t_audio - t_hand)
+                        if dt <= 0.15 and dt < min_dt and str_hand == str_audio:
+                            min_dt = dt
+                            matched_hand = h_event
+
+                    combined_event = {
+                        "t": t_audio,
+                        "string": str_audio,
+                        "audio_pred": a_event.get("detections", [{}])[0].get("conf", 0.0)
+                    }
+                    
+                    if matched_hand:
+                        combined_event["visual_pred"] = matched_hand.get("detections", [{}])[0].get("conf", 999.0) # dist
                     else:
-                        combined_error = "Combined video file was not created"
-                except subprocess.CalledProcessError as e:
-                    combined_error = f"FFmpeg error: {e.stderr[:200] if e.stderr else str(e)}"
-                except Exception as e:
-                    combined_error = f"Error creating combined video: {str(e)}"
+                        combined_event["visual_pred"] = None
+
+                    combined_events.append(combined_event)
+                
+                # Overwrite combined JSON
+                with open(combined_json_path, 'w') as f:
+                    json.dump(combined_events, f)
+                    
+            except Exception as e:
+                combined_error = f"Error combining JSONs: {str(e)}"
             
             jobs[job_id] = {
                 "status": "done",
                 "audio": audio_result,
                 "hand": hand_result,
-                "combined": combined_result,
+                "combined": {"json_path": combined_json_path},
                 "combined_error": combined_error,
             }
         except Exception as hand_err:
@@ -312,21 +335,32 @@ def _get_result_path(job: dict, kind: str, type_key: str | None) -> tuple[str, s
         if type_key == "combined":
             combined = job.get("combined")
             if not combined:
-                raise HTTPException(404, "No combined video available")
-            path = combined.get("video_path")
-            name = "harp_combined.mp4"
+                raise HTTPException(404, "No combined data available")
+            path = combined.get(f"{kind}_path")
+            name = f"harp_{type_key}_{kind}.{kind}"
         elif not type_key:
             raise HTTPException(400, "For this job, use ?type=audio, ?type=hand, or ?type=combined")
         else:
             part = job.get(type_key)
             if not part:
                 raise HTTPException(404, f"No {type_key} result")
-            path = part.get("csv_path" if kind == "csv" else "video_path")
-            name = f"harp_{type_key}_{'predictions' if kind == 'csv' else 'video'}.{'csv' if kind == 'csv' else 'mp4'}"
+            path = part.get(f"{kind}_path")
+            name = f"harp_{type_key}_{kind}.{kind}"
     else:
-        path = job.get("csv_path" if kind == "csv" else "video_path")
-        name = "harp_predictions.csv" if kind == "csv" else "harp_labeled.mp4"
+        path = job.get(f"{kind}_path")
+        name = f"harp_predictions.{kind}"
     return (path, name)
+
+
+@app.get("/api/download/json/{job_id}")
+def download_json(job_id: str, type: str = Query(None, alias="type")):
+    if job_id not in jobs or jobs[job_id].get("status") != "done":
+        raise HTTPException(404, "Job not ready or not found")
+    job = jobs[job_id]
+    path, filename = _get_result_path(job, "json", type)
+    if not path or not os.path.isfile(path):
+        raise HTTPException(404, "JSON not found")
+    return FileResponse(path, filename=filename, media_type="application/json")
 
 
 @app.get("/api/download/csv/{job_id}")

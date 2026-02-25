@@ -4,7 +4,7 @@
 # Touch = fingertip closest to a string centerline within threshold.
 # pip install ultralytics mediapipe==0.10.9 opencv-python numpy
 
-import cv2, os, time, csv, argparse
+import cv2, os, time, csv, argparse, json
 import numpy as np
 from ultralytics import YOLO
 try:
@@ -372,12 +372,12 @@ def log_touch(ev, path):
 
 # ============================== MAIN ==============================
 
-def run(source, out_video=None, preview=True, output_dir=None, weights_path=None):
+def run(source, out_video=None, preview=True, output_dir=None, weights_path=None, fast_mode=False, audio_onsets=None):
     global CSV_LOG
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)
         CSV_LOG = os.path.join(output_dir, "touch_events.csv")
-        if out_video is None:
+        if out_video is None and not fast_mode:
             out_video = os.path.join(output_dir, "video_detected.mp4")
         preview = False
     if weights_path is None:
@@ -449,39 +449,71 @@ def run(source, out_video=None, preview=True, output_dir=None, weights_path=None
     if not cap.isOpened():
         raise RuntimeError(f"Cannot open: {source}")
     fps   = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    # Determine stride for fast mode
+    stride = 1
+    if fast_mode:
+        if fps >= 55:
+            stride = 4 # 60fps -> 15fps
+        elif fps >= 25:
+            stride = 2 # 30fps -> 15fps
+            
     W     = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     H     = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-    print(f"  Video      : {W}x{H} @ {fps:.1f} fps, {total} frames")
+    print(f"  Video      : {W}x{H} @ {fps:.1f} fps, {total} frames (stride={stride})")
 
-    if out_video is None:
-        stem = (os.path.splitext(os.path.basename(source))[0]
-                if source != "0" else "webcam")
-        out_video = os.path.join(output_dir or OUTPUT_DIR, stem + "_detected.mp4")
-    os.makedirs(os.path.dirname(out_video) or ".", exist_ok=True)
-    writer = cv2.VideoWriter(out_video,
-                              cv2.VideoWriter_fourcc(*'mp4v'), fps, (W, H))
-    print(f"  Output     : {out_video}\n")
+    writer = None
+    if not fast_mode and out_video:
+        if out_video is None:
+            stem = (os.path.splitext(os.path.basename(source))[0]
+                    if source != "0" else "webcam")
+            out_video = os.path.join(output_dir or OUTPUT_DIR, stem + "_detected.mp4")
+        os.makedirs(os.path.dirname(out_video) or ".", exist_ok=True)
+        writer = cv2.VideoWriter(out_video,
+                                  cv2.VideoWriter_fourcc(*'mp4v'), fps, (W, H))
+        print(f"  Output     : {out_video}\n")
 
     smodel      = StringModel()
     contact_ctr = defaultdict(int)
     fidx        = 0
     t0          = time.time()
 
+    json_results = []
+    
     try:
+        yolo_interval = 1 if not smodel.ready else 30
+        
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
             fidx += 1
+            
+            # Skip frames if striding
+            if fidx % stride != 0 and fidx != 1:
+                continue
+                
             tnow = fidx / fps
             ts = f"{int(tnow//60):02d}:{tnow%60:05.2f}"
 
-            # 1) YOLO → feed model
-            res = yolo.predict(source=frame, imgsz=IMGSZ, conf=CONF,
-                               verbose=False, save=False)[0]
-            boxes = extract_boxes(res, CONF, IOU_THRESH)
-            smodel.feed(boxes)
+            # Check audio onsets
+            is_active_frame = True
+            if audio_onsets:
+                # Active if within 0.1s of any audio onset
+                is_active_frame = any(abs(tnow - onset_t) <= 0.1 for onset_t in audio_onsets)
+
+            # 1) YOLO → feed model (only run if model is not ready, or every yolo_interval frames)
+            if fidx <= 50 or fidx % yolo_interval == 0:
+                res = yolo.predict(source=frame, imgsz=IMGSZ, conf=CONF,
+                                   verbose=False, save=False)[0]
+                boxes = extract_boxes(res, CONF, IOU_THRESH)
+                smodel.feed(boxes)
+                # Recalculate interval based on model readiness
+                yolo_interval = 2 if not smodel.ready else 30
+            
+            # Skip MediaPipe and touch detection if not an active frame
+            if not is_active_frame:
+                continue
 
             # 2) MediaPipe hands
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -542,25 +574,49 @@ def run(source, out_video=None, preview=True, output_dir=None, weights_path=None
                     if contact_ctr[key] == 0:
                         del contact_ctr[key]
 
-            # 5) Draw
-            draw_strings(frame, smodel, boxes, touched_ids, contacts, fidx)
-            draw_subtitle(frame, confirmed, W, H)
+            # Calculate FPS
             el = time.time() - t0
             fps_p = fidx / el if el > 0 else 0
-            draw_hud(frame, smodel, len(all_pts), fps_p, fidx, total)
 
-            # 6) Output
-            writer.write(frame)
-            if preview:
-                disp = cv2.resize(frame, (W//2, H//2))
-                cv2.imshow("Harp Touch v5 (Q to quit)", disp)
-                if cv2.waitKey(1) & 0xFF in (ord('q'), 27):
-                    print("\nStopped.")
-                    break
+            # 5) Draw & Output
+            if not fast_mode:
+                draw_strings(frame, smodel, boxes, touched_ids, contacts, fidx)
+                draw_subtitle(frame, confirmed, W, H)
+                draw_hud(frame, smodel, len(all_pts), fps_p, fidx, total)
+                if writer:
+                    writer.write(frame)
+                if preview:
+                    disp = cv2.resize(frame, (W//2, H//2))
+                    cv2.imshow("Harp Touch v5 (Q to quit)", disp)
+                    if cv2.waitKey(1) & 0xFF in (ord('q'), 27):
+                        print("\nStopped.")
+                        break
 
-            for fn, li, sid, sn, dist, sx, sy in confirmed:
-                log_touch(dict(ts=ts, frame=fidx, finger=fn,
-                               string=sn, sid=sid, dist=dist), CSV_LOG)
+            # Build JSON output
+            if confirmed:
+                frame_dets = []
+                for fn, li, sid, sn, dist, sx, sy in confirmed:
+                    log_touch(dict(ts=ts, frame=fidx, finger=fn,
+                                   string=sn, sid=sid, dist=dist), CSV_LOG)
+                    frame_dets.append({
+                        "cls": "finger",
+                        "type": fn,
+                        "side": "left", # Simplified, hand_landmarker lacks robust handedness without extra code
+                        "conf": dist,  # Store pixel distance as proxy for confidence threshold
+                        "string": sid + 1
+                    })
+                
+                # Group by string
+                str_groups = defaultdict(list)
+                for det in frame_dets:
+                    str_groups[det['string']].append(det)
+                
+                for string_num, dets in str_groups.items():
+                    json_results.append({
+                        "t": round(tnow, 3),
+                        "string": string_num,
+                        "detections": dets
+                    })
 
             if fidx % 50 == 0:
                 pct = 100*fidx/total if total else 0
@@ -571,7 +627,9 @@ def run(source, out_video=None, preview=True, output_dir=None, weights_path=None
                       f"touch: {ts2}")
 
     finally:
-        cap.release(); writer.release()
+        cap.release()
+        if writer:
+            writer.release()
         if MP_NEW_API:
             hand_landmarker.close()
         else:
@@ -582,10 +640,18 @@ def run(source, out_video=None, preview=True, output_dir=None, weights_path=None
             pass
         el = time.time() - t0
         print(f"\nDone! {fidx} frames in {el:.1f}s ({fidx/el:.1f} fps)")
-        print(f"Video : {out_video}")
+        if not fast_mode:
+            print(f"Video : {out_video}")
         print(f"CSV   : {CSV_LOG}")
+        
+        # Save JSON
+        json_path = None
+        if output_dir:
+            json_path = os.path.join(output_dir, "hand_detections.json")
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(json_results, f, separators=(',', ':'))
 
-    return (CSV_LOG, out_video)
+    return CSV_LOG, out_video, json_path
 
 
 if __name__ == "__main__":
