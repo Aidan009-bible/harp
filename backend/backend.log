@@ -1,0 +1,101 @@
+INFO:     Started server process [5628]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:55580 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55641 - "POST /api/upload HTTP/1.1" 200 OK
+================================================================
+  HARP TOUCH DETECTOR  v5
+  Orientation-Agnostic | Closest-String-Per-Finger
+================================================================
+  Weights    : /Users/apple/Downloads/HarpHand (2)/HarpHand/backend/weights/best.pt  imgsz=960  conf>=0.08
+  Touch dist : 20px  consec=1
+  Fingers    : ['thumb', 'index']
+
+INFO:     127.0.0.1:55644 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  Classes (16): {0: 'S1', 1: 'S2', 2: 'S3', 3: 'S4', 4: 'S5', 5: 'S6', 6: 'S7', 7: 'S8', 8: 'S9', 9: 'S10', 10: 'S11', 11: 'S12', 12: 'S13', 13: 'S14', 14: 'S15', 15: 'S16'}
+INFO:     127.0.0.1:55648 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+I0000 00:00:1771995419.692458  156340 gl_context.cc:407] GL version: 2.1 (2.1 Metal - 90.5), renderer: Apple M4
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1771995419.700463  156344 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1771995419.715298  156342 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1771995420.126561  156348 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+  Video      : 576x1024 @ 30.0 fps, 4778 frames (stride=2)
+INFO:     127.0.0.1:55653 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55656 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55660 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:01.67]   1.0%  9.8fps  model=OK  touch: S3(index), S7(thumb)
+INFO:     127.0.0.1:55664 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55667 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55670 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:03.34]   2.1%  10.2fps  model=OK  touch: S8(thumb), S6(index)
+INFO:     127.0.0.1:55673 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55677 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55683 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:05.01]   3.1%  10.3fps  model=OK  touch: S6(index), S7(thumb)
+INFO:     127.0.0.1:55686 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55689 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55692 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:06.67]   4.2%  10.3fps  model=OK  touch: S6(thumb), S4(index)
+INFO:     127.0.0.1:55697 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55701 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55705 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55711 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:08.34]   5.2%  10.3fps  model=OK  touch: S5(index), S9(thumb)
+INFO:     127.0.0.1:55714 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55717 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55723 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:10.01]   6.3%  10.3fps  model=OK  touch: S8(thumb), S4(index)
+INFO:     127.0.0.1:55726 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55731 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55735 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:11.68]   7.3%  10.4fps  model=OK  touch: S8(thumb), S2(index)
+INFO:     127.0.0.1:55739 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55742 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55746 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:13.35]   8.4%  10.4fps  model=OK  touch: S3(index), S7(thumb)
+INFO:     127.0.0.1:55749 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55752 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55755 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:15.02]   9.4%  10.4fps  model=OK  touch: S8(thumb), S6(index)
+INFO:     127.0.0.1:55758 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55762 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55765 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:16.68]  10.5%  10.5fps  model=OK  touch: S8(thumb)
+INFO:     127.0.0.1:55768 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55771 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55774 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:18.35]  11.5%  10.5fps  model=OK  touch: S8(thumb), S5(index)
+INFO:     127.0.0.1:55778 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55781 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55785 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55789 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:20.02]  12.6%  10.5fps  model=OK  touch: S5(index), S10(thumb)
+INFO:     127.0.0.1:55795 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55798 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55803 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:21.69]  13.6%  10.5fps  model=OK  touch: S6(index), S7(thumb)
+INFO:     127.0.0.1:55806 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55811 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55815 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:23.36]  14.7%  10.5fps  model=OK  touch: S4(index), S7(thumb)
+INFO:     127.0.0.1:55819 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55822 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55825 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:25.03]  15.7%  10.5fps  model=OK  touch: S3(index), S7(thumb)
+INFO:     127.0.0.1:55829 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55833 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55836 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:26.69]  16.7%  10.5fps  model=OK  touch: S3(index), S6(thumb)
+INFO:     127.0.0.1:55839 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55842 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55848 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:28.36]  17.8%  10.5fps  model=OK  touch: S9(thumb), S6(index)
+INFO:     127.0.0.1:55852 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55857 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55862 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+  [00:30.03]  18.8%  10.5fps  model=OK  touch: S7(thumb)
+INFO:     127.0.0.1:55866 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55869 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55875 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55878 - "GET /api/status/4b4d35ed-ecb2-4224-8355-2b2eb8c01381 HTTP/1.1" 200 OK
