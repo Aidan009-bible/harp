@@ -19,7 +19,11 @@ export default function App() {
 
   const pollStatus = useCallback(async (id) => {
     try {
-      const res = await fetch(`${API}/status/${id}`)
+      const res = await fetch(`${API}/status/${id}`, {
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
+      })
       if (!res.ok) throw new Error('Status check failed')
       const data = await res.json()
       setStatus(data)
@@ -50,7 +54,13 @@ export default function App() {
       if ((method === 'hand' || method === 'both') && weightsFile) {
         form.append('weights', weightsFile)
       }
-      const res = await fetch(`${API}/upload`, { method: 'POST', body: form })
+      const res = await fetch(`${API}/upload`, {
+        method: 'POST',
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: form
+      })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || res.statusText)
