@@ -14,14 +14,9 @@ export default function App() {
   const [mode, setMode] = useState('hybrid')
   const [weightsFile, setWeightsFile] = useState(null)
 
-  // Custom Player State
-  const [detections, setDetections] = useState([])
-  const [activeDetections, setActiveDetections] = useState([])
-
   const modelInput = useRef(null)
   const videoInput = useRef(null)
   const weightsInput = useRef(null)
-  const videoPlayerRef = useRef(null)
 
   const pollStatus = useCallback(async (id) => {
     try {
@@ -33,7 +28,6 @@ export default function App() {
       setStatus(data)
 
       if (data.status === 'done') {
-        fetchDetections(id, method)
         return
       }
       if (data.status === 'error') return
@@ -43,21 +37,6 @@ export default function App() {
       setTimeout(() => pollStatus(id), 3000)
     }
   }, [method])
-
-  const fetchDetections = async (id, currentMethod) => {
-    try {
-      const type = currentMethod === 'both' ? 'combined' : currentMethod
-      const res = await fetch(`${API}/download/json/${id}?type=${type}`, {
-        headers: { 'ngrok-skip-browser-warning': 'true' }
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setDetections(data)
-      }
-    } catch (e) {
-      console.error("Failed to load detection JSON", e)
-    }
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -107,8 +86,6 @@ export default function App() {
     setJobId(null)
     setStatus(null)
     setError(null)
-    setDetections([])
-    setActiveDetections([])
     if (modelInput.current) modelInput.current.value = ''
     if (videoInput.current) videoInput.current.value = ''
     if (weightsInput.current) weightsInput.current.value = ''
@@ -122,24 +99,6 @@ export default function App() {
   const downloadJson = (type) => {
     if (!jobId) return
     window.open(type ? `${API}/download/json/${jobId}?type=${type}` : `${API}/download/json/${jobId}`, '_blank')
-  }
-
-  const handleTimeUpdate = () => {
-    if (!videoPlayerRef.current || detections.length === 0) return
-    const currentTime = videoPlayerRef.current.currentTime
-
-    // Find all detections within a small window of the current time (e.g., 0.3s)
-    const active = detections.filter(d => Math.abs(d.t - currentTime) < 0.3)
-
-    // Deduplicate by string number
-    const uniqueStrings = new Map()
-    active.forEach(d => {
-      if (!uniqueStrings.has(d.string)) {
-        uniqueStrings.set(d.string, d)
-      }
-    })
-
-    setActiveDetections(Array.from(uniqueStrings.values()))
   }
 
   /* ── Helpers ── */
