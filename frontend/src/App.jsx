@@ -340,35 +340,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Custom Synchronized Video Player */}
-                  {videoFile && (
-                    <div className="video-player-wrapper">
-                      <video
-                        ref={videoPlayerRef}
-                        src={URL.createObjectURL(videoFile)}
-                        controls
-                        className="custom-video"
-                        onTimeUpdate={handleTimeUpdate}
-                      />
-                      <div className="active-detections">
-                        {activeDetections.length > 0 ? (
-                          activeDetections.map((det, idx) => (
-                            <div key={idx} className="detection-badge">
-                              String {det.string}
-                              {det.detections.length > 0 && det.detections[0].cls === "finger" ? (
-                                <span> ({det.detections[0].type})</span>
-                              ) : (
-                                <span> (🎵)</span>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="detection-placeholder">---</div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   <div className="download-grid">
                     {method === 'both' && (
                       <button type="button" className="btn-download combined" onClick={() => downloadJson('combined')}>
@@ -425,6 +396,6 @@ export default function App() {
           <span>Both</span>
         </div>
       </footer>
-    </div>
+    </div >
   )
 }
