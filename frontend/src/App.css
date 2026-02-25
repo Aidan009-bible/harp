@@ -618,6 +618,73 @@
   background: var(--surface);
 }
 
+/* ===== CUSTOM VIDEO PLAYER ===== */
+.video-player-wrapper {
+  margin-top: 1rem;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.custom-video {
+  width: 100%;
+  max-height: 400px;
+  display: block;
+}
+
+.active-detections {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 1rem;
+  min-height: 60px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.detection-badge {
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-light);
+  color: #fff;
+  padding: 0.35rem 0.8rem;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.detection-badge span {
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.detection-placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.85rem;
+}
+
+@keyframes popIn {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* ===== HAND ERROR (subtle) ===== */
 .hand-error {
   padding: 0.6rem 0.8rem;

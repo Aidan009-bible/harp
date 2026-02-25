@@ -13,26 +13,51 @@ export default function App() {
   const [method, setMethod] = useState('audio')
   const [mode, setMode] = useState('hybrid')
   const [weightsFile, setWeightsFile] = useState(null)
+
+  // Custom Player State
+  const [detections, setDetections] = useState([])
+  const [activeDetections, setActiveDetections] = useState([])
+
   const modelInput = useRef(null)
   const videoInput = useRef(null)
   const weightsInput = useRef(null)
+  const videoPlayerRef = useRef(null)
 
   const pollStatus = useCallback(async (id) => {
     try {
       const res = await fetch(`${API}/status/${id}`, {
-        headers: {
-          'ngrok-skip-browser-warning': 'true'
-        }
+        headers: { 'ngrok-skip-browser-warning': 'true' }
       })
       if (!res.ok) throw new Error('Status check failed')
       const data = await res.json()
       setStatus(data)
-      if (data.status === 'done' || data.status === 'error') return
+
+      if (data.status === 'done') {
+        fetchDetections(id, method)
+        return
+      }
+      if (data.status === 'error') return
+
       setTimeout(() => pollStatus(id), 1500)
     } catch {
       setTimeout(() => pollStatus(id), 3000)
     }
-  }, [])
+  }, [method])
+
+  const fetchDetections = async (id, currentMethod) => {
+    try {
+      const type = currentMethod === 'both' ? 'combined' : currentMethod
+      const res = await fetch(`${API}/download/json/${id}?type=${type}`, {
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setDetections(data)
+      }
+    } catch (e) {
+      console.error("Failed to load detection JSON", e)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -82,6 +107,8 @@ export default function App() {
     setJobId(null)
     setStatus(null)
     setError(null)
+    setDetections([])
+    setActiveDetections([])
     if (modelInput.current) modelInput.current.value = ''
     if (videoInput.current) videoInput.current.value = ''
     if (weightsInput.current) weightsInput.current.value = ''
@@ -92,9 +119,27 @@ export default function App() {
     window.open(type ? `${API}/download/csv/${jobId}?type=${type}` : `${API}/download/csv/${jobId}`, '_blank')
   }
 
-  const downloadVideo = (type) => {
+  const downloadJson = (type) => {
     if (!jobId) return
-    window.open(type ? `${API}/download/video/${jobId}?type=${type}` : `${API}/download/video/${jobId}`, '_blank')
+    window.open(type ? `${API}/download/json/${jobId}?type=${type}` : `${API}/download/json/${jobId}`, '_blank')
+  }
+
+  const handleTimeUpdate = () => {
+    if (!videoPlayerRef.current || detections.length === 0) return
+    const currentTime = videoPlayerRef.current.currentTime
+
+    // Find all detections within a small window of the current time (e.g., 0.3s)
+    const active = detections.filter(d => Math.abs(d.t - currentTime) < 0.3)
+
+    // Deduplicate by string number
+    const uniqueStrings = new Map()
+    active.forEach(d => {
+      if (!uniqueStrings.has(d.string)) {
+        uniqueStrings.set(d.string, d)
+      }
+    })
+
+    setActiveDetections(Array.from(uniqueStrings.values()))
   }
 
   /* ── Helpers ── */
@@ -280,85 +325,83 @@ export default function App() {
                 <div className="error-msg">⚠️ {status.message}</div>
               )}
 
-              {/* Done + BOTH mode */}
-              {isDone && status.audio && status.hand && (
+              {/* Done State */}
+              {isDone && (
                 <>
                   <div className="result-summary">
                     <span className="result-icon">🎯</span>
                     <div className="result-info">
                       <h3>Analysis Complete</h3>
-                      <p>{status.audio.rows ?? 0} audio onset(s) • {status.hand.rows ?? 0} hand touch(es)</p>
+                      <p>
+                        {status.audio?.rows !== undefined && `${status.audio.rows} audio onset(s) `}
+                        {status.hand?.rows !== undefined && `• ${status.hand.rows} hand touch(es)`}
+                        {!status.audio && !status.hand && `${status.rows ?? 0} event(s) detected`}
+                      </p>
                     </div>
                   </div>
-                  {status.combined_error && (
-                    <div className="hand-error">⚠️ Combined video: {status.combined_error}</div>
+
+                  {/* Custom Synchronized Video Player */}
+                  {videoFile && (
+                    <div className="video-player-wrapper">
+                      <video
+                        ref={videoPlayerRef}
+                        src={URL.createObjectURL(videoFile)}
+                        controls
+                        className="custom-video"
+                        onTimeUpdate={handleTimeUpdate}
+                      />
+                      <div className="active-detections">
+                        {activeDetections.length > 0 ? (
+                          activeDetections.map((det, idx) => (
+                            <div key={idx} className="detection-badge">
+                              String {det.string}
+                              {det.detections.length > 0 && det.detections[0].cls === "finger" ? (
+                                <span> ({det.detections[0].type})</span>
+                              ) : (
+                                <span> (🎵)</span>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="detection-placeholder">---</div>
+                        )}
+                      </div>
+                    </div>
                   )}
+
                   <div className="download-grid">
-                    {status.combined && (
-                      <button type="button" className="btn-download combined" onClick={() => downloadVideo('combined')}>
-                        📹 Combined Video (hand + audio)
+                    {method === 'both' && (
+                      <button type="button" className="btn-download combined" onClick={() => downloadJson('combined')}>
+                        🔗 Download Combined JSON
                       </button>
                     )}
-                    <button type="button" className="btn-download primary" onClick={() => downloadCsv('audio')}>
-                      📊 Audio CSV
-                    </button>
-                    <button type="button" className="btn-download" onClick={() => downloadVideo('audio')}>
-                      🎬 Audio Video
-                    </button>
-                    <button type="button" className="btn-download primary" onClick={() => downloadCsv('hand')}>
-                      📊 Hand CSV
-                    </button>
-                    <button type="button" className="btn-download" onClick={() => downloadVideo('hand')}>
-                      🎬 Hand Video
-                    </button>
+
+                    {(method === 'audio' || method === 'both') && (
+                      <>
+                        <button type="button" className="btn-download primary" onClick={() => downloadCsv(method === 'both' ? 'audio' : null)}>
+                          📊 Audio CSV
+                        </button>
+                        <button type="button" className="btn-download" onClick={() => downloadJson(method === 'both' ? 'audio' : null)}>
+                          📝 Audio JSON
+                        </button>
+                      </>
+                    )}
+
+                    {(method === 'hand' || method === 'both') && (
+                      <>
+                        <button type="button" className="btn-download primary" onClick={() => downloadCsv(method === 'both' ? 'hand' : null)}>
+                          📊 Hand CSV
+                        </button>
+                        <button type="button" className="btn-download" onClick={() => downloadJson(method === 'both' ? 'hand' : null)}>
+                          📝 Hand JSON
+                        </button>
+                      </>
+                    )}
                   </div>
                 </>
               )}
 
-              {/* Done + audio-only from "both" */}
-              {isDone && status.audio && !status.hand && (
-                <>
-                  <div className="result-summary">
-                    <span className="result-icon">🎵</span>
-                    <div className="result-info">
-                      <h3>Audio Analysis Complete</h3>
-                      <p>{status.audio.rows ?? 0} onset(s) detected</p>
-                    </div>
-                  </div>
-                  {status.hand_error && (
-                    <div className="hand-error">⚠️ Hand detection: {status.hand_error}</div>
-                  )}
-                  <div className="download-grid">
-                    <button type="button" className="btn-download primary" onClick={() => downloadCsv('audio')}>
-                      📊 Download CSV
-                    </button>
-                    <button type="button" className="btn-download" onClick={() => downloadVideo('audio')}>
-                      🎬 Download Video
-                    </button>
-                  </div>
-                </>
-              )}
 
-              {/* Done + single method (audio or hand) */}
-              {isDone && !status.audio && (
-                <>
-                  <div className="result-summary">
-                    <span className="result-icon">{method === 'hand' ? '✋' : '🎵'}</span>
-                    <div className="result-info">
-                      <h3>Detection Complete</h3>
-                      <p>{status.rows ?? 0} {method === 'hand' ? 'touch event(s)' : 'onset(s)'} detected</p>
-                    </div>
-                  </div>
-                  <div className="download-grid">
-                    <button type="button" className="btn-download primary" onClick={() => downloadCsv()}>
-                      📊 Download CSV
-                    </button>
-                    <button type="button" className="btn-download" onClick={() => downloadVideo()}>
-                      🎬 Download {method === 'hand' ? 'Annotated' : 'Labeled'} Video
-                    </button>
-                  </div>
-                </>
-              )}
 
               {/* New run button */}
               {(isDone || isError) && (
